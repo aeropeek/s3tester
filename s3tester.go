@@ -53,6 +53,7 @@ type result struct {
 	Count       int    `json:"totalRequests"`
 	Failcount   int    `json:"failedRequests"`
 	Fanout      int    `json:"fanout"`
+	interDelay  int    `json:"interDelay (ms)"`
 
 	TotalElapsedTime   float64 `json:"totalElapsedTime (ms)"`
 	AverageRequestTime float64 `json:"averageRequestTime (ms)"`
@@ -333,6 +334,8 @@ func worker(results chan<- result, args parameters, credentials *credentials.Cre
 
 			r.incrementUniqObjNumCount(args.duration.set)
 
+			startSendRequest := time.Now()
+
 			for repcount := 0; repcount < args.attempts; repcount++ {
 				if source != nil {
 					//size command line arg usually sets the size for each request we need to overwrite
@@ -346,6 +349,17 @@ func worker(results chan<- result, args parameters, credentials *credentials.Cre
 				if durationLimit.enabled() {
 					results <- r
 					return
+				}
+			}
+			
+			if args.interDelay.set {
+				elapsed := time.Now().Sub(startSendRequest)
+				sleepTime := time.Duration(args.interDelay.value) * time.Millisecond - elapsed
+				if (sleepTime < 0) {
+					fmt.Printf("Request exceeded the interDelay threshold and elapsed %v. Skipping sleep.\n", elapsed)
+				} else {
+					fmt.Printf("Request started at %v and elapsed for %v. Going to sleep for %v\n", startSendRequest, elapsed, sleepTime)
+					time.Sleep(sleepTime)
 				}
 			}
 		}
