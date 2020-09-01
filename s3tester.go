@@ -333,6 +333,8 @@ func worker(results chan<- result, args parameters, credentials *credentials.Cre
 
 			r.incrementUniqObjNumCount(args.duration.set)
 
+			startSendRequest := time.Now()
+
 			for repcount := 0; repcount < args.attempts; repcount++ {
 				if source != nil {
 					//size command line arg usually sets the size for each request we need to overwrite
@@ -348,6 +350,11 @@ func worker(results chan<- result, args parameters, credentials *credentials.Cre
 					return
 				}
 			}
+			
+			elapsed := time.Now().Sub(startSendRequest)
+			sleepTime := 2000 * time.Millisecond - elapsed
+			fmt.Printf("Request started at %v and elapsed for %v. Going to sleep for %v\n", startSendRequest, elapsed, sleepTime)
+			time.Sleep(sleepTime)
 		}
 	}
 	results <- r
