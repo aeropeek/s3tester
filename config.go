@@ -71,6 +71,7 @@ type parameters struct {
 	profile            string
 	nosign             bool
 	fanout             *intFlag
+	interDelay         *intFlag
 }
 
 func parseArgs() parameters {
@@ -87,12 +88,14 @@ func parse(cmdline []string) (parameters, error) {
 	var duration intFlag
 	nrequests := intFlag{value: 1000, set: false}
 	fanout := intFlag{value:-1, set: false}
+	interDelay := intFlag{value:0, set:false}
 
 	flags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
 	flags.Var(&duration, "duration", "Test duration in seconds")
 	flags.Var(&nrequests, "requests", "Total number of requests")
 	flags.Var(&fanout, "fanout", "Total number of unique fanout copies")
+	flags.Var(&interDelay, "interDelay", "Time in ms to delay between issueing requests")
 
 	var concurrency = flags.Int("concurrency", 1, "Maximum concurrent requests (0=scan concurrency, run with ulimit -n 16384)")
 	var osize = flags.Int64("size", 30*1024, "Object size. Note that s3tester is not ideal for very large objects as the entire body must be read for v4 signing and the aws sdk does not support v4 chunked. Performance may degrade as size increases due to the use of v4 signing without chunked support")
@@ -192,6 +195,12 @@ func parse(cmdline []string) (parameters, error) {
 			}
 		} else {
 			return parameters{}, errors.New("Fanout is (currently) only supported in GET or PUT operations")
+		}
+	}
+
+	if interDelay.set {
+		if (interDelay.value <= 0){
+			return parameters{}, errors.New("Value of interDelay must => 1")
 		}
 	}
 
@@ -331,6 +340,7 @@ func parse(cmdline []string) (parameters, error) {
 		profile:            *profile,
 		nosign:             *nosign,
 		fanout:             &fanout,
+		interDelay:			&interDelay,
 	}
 
 	return args, nil

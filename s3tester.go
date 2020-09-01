@@ -53,6 +53,7 @@ type result struct {
 	Count       int    `json:"totalRequests"`
 	Failcount   int    `json:"failedRequests"`
 	Fanout      int    `json:"fanout"`
+	interDelay  int    `json:"interDelay (ms)"`
 
 	TotalElapsedTime   float64 `json:"totalElapsedTime (ms)"`
 	AverageRequestTime float64 `json:"averageRequestTime (ms)"`
@@ -351,10 +352,12 @@ func worker(results chan<- result, args parameters, credentials *credentials.Cre
 				}
 			}
 			
-			elapsed := time.Now().Sub(startSendRequest)
-			sleepTime := 2000 * time.Millisecond - elapsed
-			fmt.Printf("Request started at %v and elapsed for %v. Going to sleep for %v\n", startSendRequest, elapsed, sleepTime)
-			time.Sleep(sleepTime)
+			if args.interDelay.set {
+				elapsed := time.Now().Sub(startSendRequest)
+				sleepTime := time.Duration(args.interDelay.value) * time.Millisecond - elapsed
+				fmt.Printf("Request started at %v and elapsed for %v. Going to sleep for %v\n", startSendRequest, elapsed, sleepTime)
+				time.Sleep(sleepTime)
+			}
 		}
 	}
 	results <- r
