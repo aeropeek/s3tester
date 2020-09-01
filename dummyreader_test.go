@@ -1,9 +1,36 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"testing"
 )
+
+func TestRandomGeneratedData(t *testing.T) {
+	size := 1024
+	data := generateDataFromKey("s3tester", size)
+	fmt.Printf("Generated Data:\n%s", string(data))
+	if len(data) != size {
+		t.Fatalf("expected data of len %d but got %d", size, len(data))
+	}
+}
+
+func TestNewDummyReader(t *testing.T) {
+	var size int64 = 1024 * 8
+
+	reader := NewDummyReader(size, "s3tester")
+
+	buff := make([]byte, size)
+	bytesRead, err := reader.Read(buff)
+	if err != nil {
+		t.Fatalf("expected no error but got %s", err)
+	}
+	if int64(bytesRead) != int64(size) {
+		t.Fatalf("expected %d bytes but got %d", size, bytesRead)
+	}
+	fmt.Println("bytesRead:", bytesRead, "reader.size:", reader.size)
+	fmt.Println("buffer:", string(buff))
+}
 
 func TestRead(t *testing.T) {
 	data := "hello"
