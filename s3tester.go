@@ -355,8 +355,12 @@ func worker(results chan<- result, args parameters, credentials *credentials.Cre
 			if args.interDelay.set {
 				elapsed := time.Now().Sub(startSendRequest)
 				sleepTime := time.Duration(args.interDelay.value) * time.Millisecond - elapsed
-				fmt.Printf("Request started at %v and elapsed for %v. Going to sleep for %v\n", startSendRequest, elapsed, sleepTime)
-				time.Sleep(sleepTime)
+				if (sleepTime < 0) {
+					fmt.Printf("Request exceeded the interDelay threshold and elapsed %v. Skipping sleep.\n", elapsed)
+				} else {
+					fmt.Printf("Request started at %v and elapsed for %v. Going to sleep for %v\n", startSendRequest, elapsed, sleepTime)
+					time.Sleep(sleepTime)
+				}
 			}
 		}
 	}
