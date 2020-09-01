@@ -1,3 +1,12 @@
+# Changes to s3tester in this repo
+
+New arguments:
+
+	-fanout - add fanout support for GET/PUT operations (remote copies in SUT)
+	-interDelay - adds a delay between requests, measure in milliseconds.
+
+Data generated is random to prevent extreme DRR in SUT.
+
 # s3tester - S3 Performance Benchmarking 
 
 The goal of s3tester is to be a lightweight, S3 performance testing utility. It is solely focused on S3 testing.
