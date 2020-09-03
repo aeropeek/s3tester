@@ -4,6 +4,7 @@ New arguments:
 
 	-fanout - add fanout support for GET/PUT operations (remote copies in SUT)
 	-interDelay - adds a delay between requests, measured in milliseconds.
+	-opThreshold - Threshold in ms for operations (outputs hit/miss %)
 
 Data generated is random to prevent extreme DRR in SUT.
 
