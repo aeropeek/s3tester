@@ -53,7 +53,9 @@ type result struct {
 	Count       int    `json:"totalRequests"`
 	Failcount   int    `json:"failedRequests"`
 	Fanout      int    `json:"fanout"`
-	interDelay  int    `json:"interDelay (ms)"`
+	interDelay  time.Duration    `json:"interDelay (ms)"`
+	opThreshold time.Duration    `json:"opThreshold (ms)"`
+	invalidCount int	`json:"Invalid threshold"`
 
 	TotalElapsedTime   float64 `json:"totalElapsedTime (ms)"`
 	AverageRequestTime float64 `json:"averageRequestTime (ms)"`
@@ -352,19 +354,29 @@ func worker(results chan<- result, args parameters, credentials *credentials.Cre
 				}
 			}
 			
+			elapsed := time.Now().Sub(startSendRequest)
+			
 			if args.interDelay.set {
-				elapsed := time.Now().Sub(startSendRequest)
 				sleepTime := time.Duration(args.interDelay.value) * time.Millisecond - elapsed
-				if (sleepTime < 0) {
-					fmt.Printf("Request exceeded the interDelay threshold and elapsed %v. Skipping sleep.\n", elapsed)
-				} else {
+				if (sleepTime > 0) {
 					fmt.Printf("Request started at %v and elapsed for %v. Going to sleep for %v\n", startSendRequest, elapsed, sleepTime)
 					time.Sleep(sleepTime)
+				}
+			}
+
+			if args.opThreshold.set {
+				if (elapsed >= time.Duration(args.opThreshold.value) * time.Millisecond){
+					fmt.Printf("WARNING: Request exceeded opThreshold %v and elapsed %v\n", args.opThreshold.value, elapsed)
+					r.incrementInvalidThresholdCount()
 				}
 			}
 		}
 	}
 	results <- r
+}
+
+func (this *result) incrementInvalidThresholdCount() {
+	this.invalidCount++
 }
 
 func (this *result) incrementUniqObjNumCount(isDurationSet bool) {
@@ -424,6 +436,7 @@ func mergeResult(aggregateResults, r *result) {
 	aggregateResults.Count += r.Count
 	aggregateResults.Failcount += r.Failcount
 	aggregateResults.elapsedSum += r.elapsedSum
+	aggregateResults.invalidCount += r.invalidCount
 }
 
 func (r *result) correctEndpointUniqObjCountWithOverwriteSetting(overwrite, workload int) {
@@ -461,6 +474,9 @@ func processTestResult(testResult *results, args parameters) {
 	cummulativeResult.Operation = args.optype
 	cummulativeResult.Concurrency = args.concurrency
 	cummulativeResult.Fanout = args.fanout.value
+	cummulativeResult.interDelay = time.Duration(args.interDelay.value) * time.Millisecond
+	cummulativeResult.opThreshold = time.Duration(args.opThreshold.value) * time.Millisecond
+	cummulativeResult.invalidCount = testResult.CummulativeResult.invalidCount
 	setupResultStat(cummulativeResult)
 
 	for _, endpointResult := range testResult.PerEndpointResult {
@@ -565,6 +581,18 @@ func printResult(results result) {
 		}
 	} else if results.UniqObjNum != 0 {
 		fmt.Printf("Total number of unique objects: %d\n", results.UniqObjNum)
+	}
+
+	if results.interDelay >= 0 {
+		fmt.Printf("interDelay between requests: %v\n", results.interDelay)
+	}
+
+	if results.opThreshold >= 0 {
+		fmt.Printf("opThreshold per request: %v\n", results.opThreshold)
+		if results.invalidCount >= 0{
+			fmt.Printf("Number of invalid requests (exceeded threshold): %v\n", results.invalidCount)
+			fmt.Printf("Invalid threshold precentage: %.2f%%\n", float64(results.invalidCount) / float64(results.Count) * 100)
+		}
 	}
 
 	fmt.Printf("Failed requests: %d\n", results.Failcount)
