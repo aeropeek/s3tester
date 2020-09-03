@@ -1,12 +1,12 @@
 # Changes to s3tester in this repo
 
+Data generated is random to prevent extreme DRR in SUT.
+
 New arguments:
 
-	-fanout - add fanout support for GET/PUT operations (remote copies in SUT)
-	-interDelay - adds a delay between requests, measured in milliseconds.
-	-opThreshold - Threshold in ms for operations (outputs hit/miss %)
-
-Data generated is random to prevent extreme DRR in SUT.
+	-fanout - Fanout support for GET/PUT operations (remote copies in SUT)
+	-interDelay - Adds a delay between requests, measured in milliseconds. For example a value of 200 means a PUT every 200ms.
+	-opThreshold - Threshold in ms for operations (outputs hit/miss %). For example a value of 100 will count all requests that elapsed more than 100ms.
 
 # s3tester - S3 Performance Benchmarking 
 
