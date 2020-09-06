@@ -5,20 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
-	"time"
+	"strings"
 )
 
 // For performance reasons we need to generate data in blocks as opposed to one character at a time. This is especially true
 // for large objects.
 //
 // This MUST be a power of two to allow for fast modulo optimizations.
-// const objectDataBlockSize = 4096
-// const objectDataBlockSize = 32 * 1024
-
-// characters for random strings
-// var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-var letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+const objectDataBlockSize = 4096
 
 // implements io.ReadSeeker
 type DummyReader struct {
@@ -27,19 +21,11 @@ type DummyReader struct {
 	data   *bytes.Reader
 }
 
-func GetDataBlockSize(size int64) int {
-	if size > 4096 {
-		return 32 * 1024
-	} else {
-		return 4 * 1024
-	}
-}
-
 func NewDummyReader(size int64, seed string) *DummyReader {
 	d := DummyReader{size: size}
-	// block_size := GetDataBlockSize(size)
-	data := generateDataFromKey(seed, int(size)) // block_size)
+	data := generateDataFromKey(seed, objectDataBlockSize)
 	d.data = bytes.NewReader(data)
+
 	return &d
 }
 
@@ -128,25 +114,14 @@ func generateDataFromKey(key string, numBytes int) []byte {
 		return []byte(key[:numBytes])
 	}
 
-	rand.Seed(time.Now().UnixNano())
-
 	data := make([]byte, 0, numBytes)
-	blockSize := GetDataBlockSize(int64(numBytes))
-	for {
-		data = append(data, randSeq(blockSize)...)
-		if len(data) >= numBytes {
-			break
-		}
-	}
-	// data := randSeq(numBytes)
 
-	return data[:numBytes]
-}
+	repeat := numBytes / keylen
+	data = append(data, []byte(strings.Repeat(key, repeat))...)
 
-func randSeq(n int) []byte {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	return b
+	// Generate the remaining substring < keylen
+	remainder := key[:numBytes%keylen]
+	data = append(data, []byte(remainder)...)
+
+	return data
 }
