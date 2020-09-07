@@ -359,14 +359,14 @@ func worker(results chan<- result, args parameters, credentials *credentials.Cre
 			if args.interDelay.set {
 				sleepTime := time.Duration(args.interDelay.value) * time.Millisecond - elapsed
 				if (sleepTime > 0) {
-					fmt.Printf("Request started at %v and elapsed for %v. Going to sleep for %v\n", startSendRequest, elapsed, sleepTime)
+					// fmt.Printf("Request started at %v and elapsed for %v. Going to sleep for %v\n", startSendRequest, elapsed, sleepTime)
 					time.Sleep(sleepTime)
 				}
 			}
 
 			if args.opThreshold.set {
 				if (elapsed >= time.Duration(args.opThreshold.value) * time.Millisecond){
-					fmt.Printf("WARNING: Request exceeded opThreshold %v and elapsed %v\n", args.opThreshold.value, elapsed)
+					// fmt.Printf("WARNING: Request exceeded opThreshold %v and elapsed %v\n", args.opThreshold.value, elapsed)
 					r.incrementInvalidThresholdCount()
 				}
 			}
