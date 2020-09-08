@@ -167,9 +167,8 @@ func NewDurationSetting(duration *intFlag, runStart time.Time) *durationSetting 
 	if duration.set {
 		maxRunTime := time.Duration(duration.value * 1e9)
 		return &durationSetting{applicable: true, runstart: runStart, maxRunTime: maxRunTime}
-	} else {
-		return &durationSetting{applicable: false}
-	}
+	} 
+	return &durationSetting{applicable: false}
 }
 
 func (ds *durationSetting) enabled() bool {
