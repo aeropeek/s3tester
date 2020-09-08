@@ -61,6 +61,7 @@ type parameters struct {
 	verify             int
 	min                int64
 	max                int64
+	fixedSizes         []string
 	jsonDecoder        *json.Decoder
 	nrequests          *intFlag
 	duration           *intFlag
@@ -125,6 +126,7 @@ func parse(cmdline []string) (parameters, error) {
 	var verify = flags.Int("verify", 0, "Verify the retrieved data on a get operation - (0=disable verify(default), 1=normal put data, 2=multipart put data). If verify=2, partsize is required and default partsize is set to 5242880.")
 
 	var uniformDist = flags.String("uniformDist", "", "Generates a uniform distribution of object sizes given a min-max size (10-20)")
+	var fixedSizes = flags.String("fixedSizes", "", "Looping through sizes of objects sizes given 2 or more sizes (100,200,850,1200,1700)")
 	var isJson = flags.Bool("json", false, "The result will be printed out in JSON format if this flag exists")
 	var tier = flags.String("tier", "standard", "The retrieval option for restoring an object. One of expedited, standard, or bulk. AWS default option is standard if not specified")
 	var days = flags.Int64("days", 1, "The number of days that the restored object will be available for")
@@ -238,6 +240,12 @@ func parse(cmdline []string) (parameters, error) {
 		return parameters{}, err
 	}
 	var jsonDecoder *json.Decoder
+
+	fixSizes, err := validateFixedSizes(*fixedSizes)
+	if err != nil {
+		return parameters{}, err
+	}
+
 
 	if *workload != "" {
 		if jsonDecoder, err = openFile(*workload); err != nil {
@@ -382,4 +390,21 @@ func validateEndpoint(endpoint string) ([]string, error) {
 		endpoints = append(endpoints, trimEndpoint)
 	}
 	return endpoints, nil
+}
+
+// Validate input fixedSizes string, reject duplicate sizes
+func validateFixedSizes(fsize string) ([]string, error) {
+	fixedSizesSet := make(map[string]struct{})
+	fixedSizes := make([]string, 0)
+	for _, fixSize := range strings.Split(fsize, ",") {
+		trimFixSize := strings.Trim(fixSize, " ")
+
+		// check if map contains this size 
+		if _, hasKey := fixedSizesSet[trimFixSize]; hasKey {
+			return nil, errors.New("Size \"" + trimFixSize + "\" is a duplicate size")
+		}
+		fixedSizesSet[trimFixSize] = struct{}{}
+		fixedSizes = append(fixedSizes, trimFixSize)
+	}
+	return fixedSizes, nil
 }
