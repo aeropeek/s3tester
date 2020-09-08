@@ -157,6 +157,28 @@ func randMinMax(source *rand.Rand, min int64, max int64) int64 {
 	return min + source.Int63n(max-min+1)
 }
 
+type stringStatefulIterator struct {
+    current int
+    data    []string
+}
+
+func (it *stringStatefulIterator) Next() int64 {
+	if it.current == len(it.data)-1 {
+		it.current = 0
+	} else {
+		it.current++
+    }
+	i, err := strconv.ParseInt(it.data[it.current], 10, 64)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return i
+}
+
+func NewStringStatefulIterator(data []string) *stringStatefulIterator {
+    return &stringStatefulIterator{data: data, current: -1}
+}
+
 type durationSetting struct {
 	applicable bool
 	runstart   time.Time
@@ -182,8 +204,15 @@ var detailed []detail
 
 func runtest(args parameters) (float64, results) {
 	c := make(chan result, args.concurrency)
+	
+	// create a global iterator
+	var nextSize *stringStatefulIterator
+	if len(args.fixedSizes) > 1 {
+		nextSize = NewStringStatefulIterator(args.fixedSizes)
+	}
+
 	startTime := time.Now()
-	startTestWorker(c, args)
+	startTestWorker(c, args, nextSize)
 	testResult := collectWorkerResult(c, args, startTime)
 
 	if args.optype != "validate" {
@@ -193,7 +222,7 @@ func runtest(args parameters) (float64, results) {
 	return float64(testResult.CummulativeResult.Count) / testResult.CummulativeResult.elapsedTime.Seconds(), testResult
 }
 
-func startTestWorker(c chan<- result, args parameters) {
+func startTestWorker(c chan<- result, args parameters, ns *stringStatefulIterator) {
 	credential, err := loadCredentialProfile(args.profile, args.nosign)
 	if err != nil {
 		fmt.Println("Failed loading credentials.\nPlease specify env variable AWS_SHARED_CREDENTIALS_FILE if you put credential file other than AWS CLI configuration directory.")
@@ -223,7 +252,7 @@ func startTestWorker(c chan<- result, args parameters) {
 				workChan = workerChans[workerId]
 				workChan.wg.Add(1)
 			}
-			go worker(c, args, credential, workerId, endpoint, endpointStartTime, limiter, workChan)
+			go worker(c, args, credential, workerId, endpoint, endpointStartTime, limiter, workChan, ns)
 		}
 	}
 	if args.jsonDecoder != nil {
@@ -283,7 +312,7 @@ func sendRequest(svc *s3.S3, httpClient *http.Client, optype string, keyName str
 	}
 }
 
-func worker(results chan<- result, args parameters, credentials *credentials.Credentials, id int, endpoint string, runstart time.Time, limiter *rate.Limiter, workerChan *workerChan) {
+func worker(results chan<- result, args parameters, credentials *credentials.Credentials, id int, endpoint string, runstart time.Time, limiter *rate.Limiter, workerChan *workerChan, ns *stringStatefulIterator) {
 	httpClient := MakeHTTPClient()
 	svc := MakeS3Service(httpClient, args.retrySleep, args.retries, endpoint, args.region, args.consistencyControl, credentials)
 
@@ -345,6 +374,11 @@ func worker(results chan<- result, args parameters, credentials *credentials.Cre
 					args.osize = newSize
 				}
 
+				// iterate through list fo object sizes
+				if ns != nil {
+					args.osize = ns.Next()
+				}
+				
 				sendRequest(svc, httpClient, args.optype, keyName, &args, &r, limiter)
 
 				if durationLimit.enabled() {

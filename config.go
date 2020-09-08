@@ -359,6 +359,7 @@ func parse(cmdline []string) (parameters, error) {
 		fanout:             &fanout,
 		interDelay:			&interDelay,
 		opThreshold:        &opThreshold,
+		fixedSizes:         fixSizes,
 	}
 
 	return args, nil
